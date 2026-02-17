@@ -1,4 +1,4 @@
-# 🐂 PAPERTRADE DEX - DEMO MARKET
+#PAPERTRADE DEX - DEMO MARKET
 
 Terminal trading simulasi (DEX Demo) yang dibangun di atas ekosistem **Solana Devnet**. Project ini dirancang khusus untuk para trader yang ingin melatih trading derivatif (Perps) menggunakan data pasar asli namun dengan risiko nol, dilengkapi dengan pengalaman antarmuka (UI) yang nyaman dan asisten sinyal berbasis AI.
 
