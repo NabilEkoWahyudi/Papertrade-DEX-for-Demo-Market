@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAPERTRADE - PRO TERMINAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --bg: #0b0e11; --panel: #161a1e; 
+            --green: #0ecb81; --red: #f6465d; 
+            --text: #eaecef; --sub: #848e9c; 
+            --accent: #f0b90b; --border: #2b3139;
+            --wa-user: #005c4b; --wa-ai: #202c33;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        header { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #0b0e11; z-index: 50; }
+        .logo { font-weight: 900; font-size: 14px; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
+        .logo span { color: var(--accent); }
+        
+        #wallet-btn { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 11px; }
+        #paper-balance-wrap { display: none; align-items: center; gap: 12px; margin-right: 15px; }
+        .balance-val { color: var(--accent); font-weight: 800; font-size: 13px; font-family: 'JetBrains Mono'; }
+        
+        .faucet-btn { background: var(--accent); border: none; color: #000; font-size: 10px; font-weight: 800; padding: 5px 10px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+        .faucet-btn:disabled { background: #2b3139 !important; color: #555 !important; cursor: not-allowed; border: 1px solid #333; }
+
+        /* FIX: ZERO GAP LAYOUT */
+        .layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 48px); }
+        .left-column { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+        .chart-container { flex: 0 0 65%; width: 100%; background: #000; border-bottom: 1px solid var(--border); } 
+        #tv_chart_container { width: 100%; height: 100%; }
+
+        .bottom-container { flex: 1; display: flex; overflow: hidden; background: #0b0e11; margin: 0; }
+        .order-book-panel { flex: 1.6; display: flex; flex-direction: column; border-right: 1px solid var(--border); } 
+        .leaderboard-panel { flex: 0.4; display: flex; flex-direction: column; }
+        
+        .panel-header { padding: 8px 12px; font-size: 10px; font-weight: 700; color: var(--sub); background: #161a1e; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .ob-content-horizontal { flex: 1; display: flex; overflow: hidden; }
+        .ob-side { flex: 1; overflow-y: auto; }
+        .ob-row { display: flex; justify-content: space-between; padding: 2px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; height: 16px; }
+        .ob-price.bid { color: var(--green); } .ob-price.ask { color: var(--red); }
+        .ob-center-price { width: 130px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; background: rgba(255,255,255,0.02); border-left: 1px solid var(--border); border-right: 1px solid var(--border); transition: color 0.3s ease; }
+
+        .control-panel { width: 330px; background: #161a1e; display: flex; flex-direction: column; border-left: 1px solid var(--border); overflow-y: auto; }
+        .chat-ui { height: 210px; display: flex; flex-direction: column; overflow: hidden; border-bottom: 1px solid var(--border); background-color: #0b141a; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; }
+        .chat-box { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 8px; font-size: 11px; line-height: 1.4; position: relative; max-width: 80%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); }
+        .msg.ai { background: var(--wa-ai); color: #e9edef; align-self: flex-start; border-top-left-radius: 0; }
+        .msg.ai::after { content: ""; position: absolute; left: -10px; top: 0; border-width: 0 10px 10px 0; border-style: solid; border-color: transparent var(--wa-ai) transparent transparent; }
+        .msg.user { background: var(--wa-user); color: #e9edef; align-self: flex-end; border-top-right-radius: 0; }
+        .msg.user::after { content: ""; position: absolute; right: -10px; top: 0; border-width: 10px 10px 0 0; border-style: solid; border-color: var(--wa-user) transparent transparent transparent; }
+
+        .trade-area { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .input-box { width: 100%; background: #0b0e11; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 4px; font-size: 13px; font-weight: 600; outline: none; }
+        
+        .trade-btns { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-exe { flex: 1; padding: 15px; border: none; border-radius: 4px; font-weight: 900; cursor: pointer; font-size: 14px; text-transform: uppercase; transition: 0.2s; }
+        .btn-exe.long { background: var(--green); color: #0b0e11; }
+        .btn-exe.short { background: var(--red); color: #fff; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--panel); width: 340px; padding: 25px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .share-btn { margin: 15px; padding: 12px; background: transparent; border: 1px solid var(--border); color: var(--sub); font-weight: 700; cursor: pointer; border-radius: 4px; font-size: 11px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">PAPER<span>TRADE</span></div>
+    <div style="display:flex; align-items:center;">
+        <div id="paper-balance-wrap">
+            <div style="text-align:right; margin-right:12px;">
+                <div style="font-size:8px; color:var(--sub); font-weight:900;">WALLET BALANCE</div>
+                <div id="paper-balance" class="balance-val">0 $PAPER</div>
+            </div>
+            <button onclick="claimFaucet()" id="faucet-btn" class="faucet-btn">CLAIM 1K</button>
+        </div>
+        <button id="wallet-btn" onclick="openWalletModal()">CONNECT WALLET</button>
+    </div>
+</header>
+
+<div class="layout">
+    <div class="left-column">
+        <div class="chart-container"><div id="tv_chart_container"></div></div>
+        <div class="bottom-container">
+            <div class="order-book-panel">
+                <div class="panel-header"><span>BIDS (BUY)</span><span>MARK PRICE</span><span>ASKS (SELL)</span></div>
+                <div class="ob-content-horizontal">
+                    <div class="ob-side" id="obBids"></div>
+                    <div class="ob-center-price" id="curPrice">---</div>
+                    <div class="ob-side" id="obAsks"></div>
+                </div>
+            </div>
+            <div class="leaderboard-panel">
+                <div class="panel-header"><span>TOP DEGENS</span><span>PROFIT</span></div>
+                <div id="leaderboardList" style="flex:1; overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <div class="chat-ui">
+            <div class="panel-header" style="justify-content:center; background: #202c33; border:none;">PARATRADER AI</div>
+            <div class="chat-box" id="chatBox"><div class="msg ai">Sistem siap. Mau analisa market?</div></div>
+            <div style="display:flex; padding:8px; background: #202c33;">
+                <input type="text" id="chatInput" placeholder="Tulis pesan..." style="flex:1; background:#2a3942; border:none; color:#fff; padding:8px 12px; font-size:12px; border-radius:8px;" onkeypress="if(event.key==='Enter') sendChat()">
+            </div>
+        </div>
+
+        <div class="trade-area">
+            <select id="assetSelect" class="input-box" onchange="changeAsset()">
+                <option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="SOLUSDT">SOL/USDT</option>
+            </select>
+            <div style="display:flex; justify-content:space-between;"><span style="font-size:10px; color:var(--sub); font-weight:800;">LEVERAGE</span><span id="levText" style="color:var(--accent); font-weight:900;">20x</span></div>
+            <input type="range" min="1" max="100" value="20" style="width:100%; accent-color:var(--accent);" oninput="updateLev(this.value)">
+
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="colInput" class="input-box" placeholder="Amount" value="100" style="flex:2;" inputmode="decimal">
+                <select id="colCurrency" class="input-box" style="flex:1;"><option value="USDT">USDT</option><option value="USDC">USDC</option><option value="SOL">SOL</option></select>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><div style="font-size:9px; color:var(--green); font-weight:800; margin-bottom:4px;">TAKE PROFIT</div><input type="text" id="tpInput" class="input-box" placeholder="Target" inputmode="decimal"></div>
+                <div style="flex:1;"><div style="font-size:9px; color:var(--red); font-weight:800; margin-bottom:4px;">STOP LOSS</div><input type="text" id="slInput" class="input-box" placeholder="Invalid" inputmode="decimal"></div>
+            </div>
+            <div class="trade-btns">
+                <button class="btn-exe long" onclick="openPos('LONG')">LONG</button>
+                <button class="btn-exe short" onclick="openPos('SHORT')">SHORT</button>
+            </div>
+        </div>
+        <div id="posContainer"></div>
+        <button class="share-btn" onclick="captureCard()">EXPORT PNL DATA</button>
+    </div>
+</div>
+
+<div id="alertModal" class="modal">
+    <div class="modal-content">
+        <div id="alertIcon" style="font-size:40px; margin-bottom:10px;">🚀</div>
+        <div id="alertTitle" style="font-weight:900; color:#fff; margin-bottom:10px;">INFO</div>
+        <div id="alertMsg" style="font-size:13px; color:var(--sub); margin-bottom:20px;"></div>
+        <button onclick="closeModal()" style="width:100%; padding:12px; background:var(--accent); border:none; font-weight:800; border-radius:4px; cursor:pointer;">OK</button>
+    </div>
+</div>
+
+<div id="walletModal" class="modal">
+    <div class="modal-content">
+        <div style="font-weight:900; color:#fff; margin-bottom:20px;">CONNECT WALLET</div>
+        <button onclick="connectSpecificWallet('phantom')" style="width:100%; padding:12px; background:#161a1e; border:1px solid var(--border); color:#fff; margin-bottom:8px; cursor:pointer; border-radius:4px;">Phantom</button>
+        <button onclick="connectSpecificWallet('solflare')" style="width:100%; padding:12px; background:#161a1e; border:1px solid var(--border); color:#fff; cursor:pointer; border-radius:4px;">Solflare</button>
+        <button onclick="closeModal()" style="margin-top:15px; background:transparent; border:none; color:var(--sub); cursor:pointer;">Cancel</button>
+    </div>
+</div>
+
+<script>
+    let state = { symbol: 'BTCUSDT', price: 0, lastPrice: 0, wallet: localStorage.getItem('walletAddress'), pos: JSON.parse(localStorage.getItem('activePosition')), lev: 20, solPrice: 0 };
+    let ws = null, obWs = null;
+
+    new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "timezone": "Asia/Jakarta", "theme": "dark", "style": "1", "container_id": "tv_chart_container", "hide_side_toolbar": false, "toolbar_bg": "#0b0e11", "withdateranges": true });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (state.wallet) { updateWalletUI(state.wallet); connectSpecificWallet(localStorage.getItem('walletType'), true); updatePaperBalance(); }
+        if (state.pos) renderPos();
+        loadLeaderboard();
+        connectData(state.symbol);
+        setInterval(loadLeaderboard, 30000);
+        getSOLPrice();
+        checkFaucetEligibility(); 
+    });
+
+    function checkFaucetEligibility() {
+        const lastClaim = localStorage.getItem('lastClaimPaper');
+        if (!lastClaim) return;
+        const diff = Date.now() - parseInt(lastClaim);
+        if (diff < 24 * 60 * 60 * 1000) {
+            const btn = document.getElementById('faucet-btn');
+            if(btn) { btn.disabled = true; btn.innerText = "CLAIMED"; }
+        }
+    }
+
+    async function getSOLPrice() { try { const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT'); const d = await r.json(); state.solPrice = parseFloat(d.price); } catch(e) { state.solPrice = 200; } }
+
+    function connectData(sym) {
+        if(ws) ws.close();
+        ws = new WebSocket(`wss://data-stream.binance.vision/ws/${sym.toLowerCase()}@ticker`);
+        ws.onmessage = (e) => {
+            const d = JSON.parse(e.data); state.lastPrice = state.price; state.price = parseFloat(d.c);
+            const el = document.getElementById('curPrice'); el.innerText = state.price.toFixed(2);
+            el.style.color = state.price >= state.lastPrice ? 'var(--green)' : 'var(--red)';
+            if(state.pos) { updatePnL(); checkAutoExit(); }
+        };
+        connectOB(sym);
+    }
+
+    function connectOB(sym) {
+        if(obWs) obWs.close();
+        obWs = new WebSocket(`wss://data-stream.binance.vision/ws/${sym.toLowerCase()}@depth20@100ms`);
+        obWs.onmessage = (e) => {
+            const d = JSON.parse(e.data);
+            document.getElementById('obBids').innerHTML = d.bids.slice(0,18).map(i => `<div class="ob-row"><span class="ob-price bid">${parseFloat(i[0]).toFixed(2)}</span><span>${parseFloat(i[1]).toFixed(3)}</span></div>`).join('');
+            document.getElementById('obAsks').innerHTML = d.asks.slice(0,18).map(i => `<div class="ob-row"><span class="ob-price ask">${parseFloat(i[0]).toFixed(2)}</span><span>${parseFloat(i[1]).toFixed(3)}</span></div>`).join('');
+        };
+    }
+
+    async function claimFaucet() {
+        if(!state.wallet) return; const btn = document.getElementById('faucet-btn'); btn.innerText = "WAIT..."; btn.disabled = true;
+        try {
+            const res = await fetch('/api/faucet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userWallet: state.wallet }) });
+            const data = await res.json();
+            if(data.success) { 
+                localStorage.setItem('lastClaimPaper', Date.now().toString());
+                showPop("SUCCESS", "1K $PAPER Sent!", "🚀"); updatePaperBalance(); checkFaucetEligibility();
+            } else { showPop("ERROR", data.message, "💀"); btn.innerText = "CLAIM 1K"; btn.disabled = false; }
+        } catch(e) { btn.innerText = "CLAIM 1K"; btn.disabled = false; }
+    }
+
+    async function updatePaperBalance() { if(!state.wallet) return; document.getElementById('paper-balance-wrap').style.display = 'flex'; try { const res = await fetch(`/api/balance?wallet=${state.wallet}`); const data = await res.json(); document.getElementById('paper-balance').innerText = `${data.balance.toLocaleString()} $PAPER`; checkFaucetEligibility(); } catch(e) {} }
+    function checkAutoExit() { const p = state.pos; if(!p.tp && !p.sl) return; if(p.side === 'LONG' && ((p.tp && state.price >= p.tp) || (p.sl && state.price <= p.sl))) triggerExit(state.price >= p.tp ? "TP HIT!" : "SL HIT!"); if(p.side === 'SHORT' && ((p.tp && state.price <= p.tp) || (p.sl && state.price >= p.sl))) triggerExit(state.price <= p.tp ? "TP HIT!" : "SL HIT!"); }
+    function triggerExit(msg) { showPop("CLOSED", msg, "🎯"); state.pos = null; localStorage.removeItem('activePosition'); renderPos(); }
+    function showPop(title, msg, icon) { document.getElementById('alertTitle').innerText = title; document.getElementById('alertMsg').innerText = msg; document.getElementById('alertIcon').innerText = icon; document.getElementById('alertModal').classList.add('show'); }
+    function closeModal() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('show')); }
+    function openWalletModal() { document.getElementById('walletModal').classList.add('show'); }
+
+    async function connectSpecificWallet(type, isAuto = false) {
+        if(!isAuto) closeModal(); 
+        try {
+            let provider = type === 'phantom' ? window.phantom?.solana : window.solflare;
+            const resp = await provider.connect(isAuto ? { onlyIfTrusted: true } : {});
+            state.wallet = (resp?.publicKey || provider.publicKey).toString();
+            localStorage.setItem('walletAddress', state.wallet); localStorage.setItem('walletType', type);
+            updateWalletUI(state.wallet); updatePaperBalance(); checkFaucetEligibility();
+            if(!isAuto) showPop("AUTHENTICATED", "Access Granted!", "✅");
+        } catch (err) { localStorage.clear(); }
+    }
+
+    function updateWalletUI(address) { document.getElementById('wallet-btn').innerText = address.slice(0,4)+'...'+address.slice(-4); }
+    function updateLev(v) { state.lev = v; document.getElementById('levText').innerText = v + 'x'; }
+    function changeAsset() { state.symbol = document.getElementById('assetSelect').value; connectData(state.symbol); }
+
+    function openPos(side) {
+        const rawInput = document.getElementById('colInput').value.replace(',', '.');
+        const colVal = parseFloat(rawInput); 
+        const curr = document.getElementById('colCurrency').value;
+        const rawTp = document.getElementById('tpInput').value.replace(',', '.');
+        const rawSl = document.getElementById('slInput').value.replace(',', '.');
+        
+        if(!state.wallet || isNaN(colVal) || colVal <= 0) { showPop("ERROR", "Modal tidak valid!", "💀"); return; }
+        
+        let colUSD = colVal; if(curr === 'SOL') colUSD = colVal * state.solPrice;
+        state.pos = { side, entry: state.price, col: Number(colUSD), rawCol: colVal, curr, lev: Number(state.lev), size: (Number(colUSD) * Number(state.lev)) / state.price, tp: parseFloat(rawTp) || null, sl: parseFloat(rawSl) || null };
+        localStorage.setItem('activePosition', JSON.stringify(state.pos)); renderPos();
+    }
+
+    function renderPos() {
+        const c = document.getElementById('posContainer'); if(!state.pos) { c.innerHTML=''; return; }
+        const p = state.pos;
+        c.innerHTML = `
+            <div class="pos-card">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <strong style="color:#fff;">${state.symbol} ${p.side} ${p.lev}x</strong>
+                    <span id="pnlVal" style="font-weight:900;">$0.00</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:10px;">
+                    <span id="pnlPerc" style="font-weight:bold; color:var(--green);">0.00%</span>
+                    <span style="color:var(--sub);">Modal: ${p.rawCol} ${p.curr}</span>
+                </div>
+                <button onclick="state.pos=null; localStorage.removeItem('activePosition'); renderPos()" style="width:100%; margin-top:10px; background:#2b3139; border:none; color:#848e9c; padding:8px; border-radius:4px; cursor:pointer;">CLOSE</button>
+            </div>`;
+    }
+
+    function updatePnL() {
+        if(!state.pos || isNaN(state.pos.col)) return;
+        const pnl = (state.pos.side==='LONG' ? state.price - state.pos.entry : state.pos.entry - state.price) * state.pos.size;
+        const roe = (pnl / Number(state.pos.col)) * 100;
+        const elV = document.getElementById('pnlVal'); const elP = document.getElementById('pnlPerc');
+        if(elV) { elV.innerText = (pnl>=0?'+':'') + '$' + pnl.toFixed(2); elV.style.color = pnl>=0 ? 'var(--green)' : 'var(--red)'; }
+        if(elP) { elP.innerText = (roe>=0?'+':'') + roe.toFixed(2) + '%'; elP.style.color = roe>=0 ? 'var(--green)' : 'var(--red)'; }
+    }
+
+    // --- AI VISION: READING CURRENT PRICE ---
+    async function sendChat() {
+        const i = document.getElementById('chatInput'); if(!i.value) return; 
+        const userMsg = i.value; const b = document.getElementById('chatBox');
+        b.innerHTML += `<div class="msg user">${userMsg}</div>`;
+        const id = "ai_" + Date.now(); b.innerHTML += `<div class="msg ai" id="${id}">...</div>`;
+        i.value = ''; b.scrollTop = b.scrollHeight;
+        try {
+            const res = await fetch('/api/chat', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    message: userMsg, 
+                    marketData: `REAL-TIME: ${state.symbol} Price is $${state.price}. Provide entry at this price or better. Include TP/SL.` 
+                }) 
+            });
+            const data = await res.json(); document.getElementById(id).innerText = data.reply;
+        } catch (err) {}
+        b.scrollTop = b.scrollHeight;
+    }
+
+    // --- CLEAN CAPTURE CARD ---
+    async function captureCard() {
+        if(!state.pos || isNaN(state.pos.col)) return;
+        const pnl = (state.pos.side==='LONG' ? state.price - state.pos.entry : state.pos.entry - state.price) * state.pos.size;
+        const roe = (pnl / Number(state.pos.col)) * 100;
+        const card = document.createElement('div');
+        card.style = "position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:380px; height:580px; background:#0b0e11; color:#fff; padding:40px; border:1px solid #333; z-index:9999; display:flex; flex-direction:column; justify-content:center; font-family:'Inter';";
+        card.innerHTML = `
+            <h1 style="font-size:20px; color:var(--accent);">PAPERTRADE</h1>
+            <div style="margin-top:40px;">
+                <h2 style="font-size:32px;">${state.symbol}</h2>
+                <div style="color:${pnl>=0?'#0ecb81':'#f6465d'}; border: 1px solid ${pnl>=0?'#0ecb81':'#f6465d'}; display:inline-block; padding: 2px 8px; margin-top:8px; font-weight:800;">${state.pos.side} ${state.pos.lev}X</div>
+            </div>
+            <div style="margin-top:50px;">
+                <div style="font-size:12px; color:#848e9c;">ROE / PERSENTASE</div>
+                <div style="font-size:64px; font-weight:900; color:${pnl>=0?'#0ecb81':'#f6465d'};">${pnl>=0?'+':''}${roe.toFixed(2)}%</div>
+                <div style="font-size:11px; color:#555; margin-top:10px;">Entry: ${state.pos.entry.toFixed(2)} | Mark: ${state.price.toFixed(2)} | PnL: $${pnl.toFixed(2)}</div>
+            </div>
+            <div style="margin-top:100px; border-top:1px solid #222; padding-top:20px; text-align:center;">
+                <div style="color:var(--accent); font-size:14px; font-weight:800; letter-spacing:2px;">TRADED ON PAPERTRADE PRO</div>
+            </div>`;
+        document.body.appendChild(card);
+        html2canvas(card).then(c => { const l = document.createElement('a'); l.download='PNL_PRO.png'; l.href=c.toDataURL(); l.click(); document.body.removeChild(card); });
+    }
+
+    async function loadLeaderboard() { const res = await fetch('/api/leaderboard'); const data = await res.json(); document.getElementById('leaderboardList').innerHTML = data.map((d, i) => `<div style="display:flex; justify-content:space-between; padding:8px 12px; font-size:11px; border-bottom:1px solid #1a1a1a; font-family:'JetBrains Mono';"><span style="color:${i===0?'var(--accent)':'#848e9c'}">#${i+1} ${d.wallet}</span><span style="font-weight:bold; color:var(--green)">+${d.profit.toLocaleString()}</span></div>`).join(''); }
+    connectData('BTCUSDT');
+</script>
+</body>
+</html>
