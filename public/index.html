@@ -30,7 +30,6 @@
         .faucet-btn { background: var(--accent); border: none; color: #000; font-size: 10px; font-weight: 800; padding: 5px 10px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
         .faucet-btn:disabled { background: #2b3139 !important; color: #555 !important; cursor: not-allowed; border: 1px solid #333; }
 
-        /* FIX: ZERO GAP LAYOUT */
         .layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 48px); }
         .left-column { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
         .chart-container { flex: 0 0 65%; width: 100%; background: #000; border-bottom: 1px solid var(--border); } 
@@ -158,7 +157,16 @@
 </div>
 
 <script>
-    let state = { symbol: 'BTCUSDT', price: 0, lastPrice: 0, wallet: localStorage.getItem('walletAddress'), pos: JSON.parse(localStorage.getItem('activePosition')), lev: 20, solPrice: 0 };
+    let state = { 
+        symbol: 'BTCUSDT', 
+        price: 0, 
+        lastPrice: 0, 
+        priceHistory: [], // Simpan histori harga buat AI
+        wallet: localStorage.getItem('walletAddress'), 
+        pos: JSON.parse(localStorage.getItem('activePosition')), 
+        lev: 20, 
+        solPrice: 0 
+    };
     let ws = null, obWs = null;
 
     new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "timezone": "Asia/Jakarta", "theme": "dark", "style": "1", "container_id": "tv_chart_container", "hide_side_toolbar": false, "toolbar_bg": "#0b0e11", "withdateranges": true });
@@ -189,8 +197,16 @@
         if(ws) ws.close();
         ws = new WebSocket(`wss://data-stream.binance.vision/ws/${sym.toLowerCase()}@ticker`);
         ws.onmessage = (e) => {
-            const d = JSON.parse(e.data); state.lastPrice = state.price; state.price = parseFloat(d.c);
-            const el = document.getElementById('curPrice'); el.innerText = state.price.toFixed(2);
+            const d = JSON.parse(e.data); 
+            state.lastPrice = state.price; 
+            state.price = parseFloat(d.c);
+
+            // Update price history buat analisa tren
+            state.priceHistory.push(state.price);
+            if(state.priceHistory.length > 20) state.priceHistory.shift();
+
+            const el = document.getElementById('curPrice'); 
+            el.innerText = state.price.toFixed(2);
             el.style.color = state.price >= state.lastPrice ? 'var(--green)' : 'var(--red)';
             if(state.pos) { updatePnL(); checkAutoExit(); }
         };
@@ -282,24 +298,33 @@
         if(elP) { elP.innerText = (roe>=0?'+':'') + roe.toFixed(2) + '%'; elP.style.color = roe>=0 ? 'var(--green)' : 'var(--red)'; }
     }
 
-    // --- AI VISION: READING CURRENT PRICE ---
+    // --- AI VISION: READING CURRENT PRICE + TREND ANALYSIS ---
     async function sendChat() {
         const i = document.getElementById('chatInput'); if(!i.value) return; 
-        const userMsg = i.value; const b = document.getElementById('chatBox');
+        const userMsg = i.value; 
+
+        // Hitung perubahan harga (Trend) buat dikirim ke AI
+        const firstPrice = state.priceHistory[0] || state.price;
+        const changePct = ((state.price - firstPrice) / firstPrice * 100).toFixed(2);
+        const trend = changePct > 0 ? "NAIK (BULLISH)" : "TURUN (BEARISH)";
+
+        const b = document.getElementById('chatBox');
         b.innerHTML += `<div class="msg user">${userMsg}</div>`;
         const id = "ai_" + Date.now(); b.innerHTML += `<div class="msg ai" id="${id}">...</div>`;
         i.value = ''; b.scrollTop = b.scrollHeight;
+
         try {
             const res = await fetch('/api/chat', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ 
                     message: userMsg, 
-                    marketData: `REAL-TIME: ${state.symbol} Price is $${state.price}. Provide entry at this price or better. Include TP/SL.` 
+                    marketData: `ASSET: ${state.symbol} | PRICE: $${state.price} | TREND 2 MIN TERAKHIR: ${trend} (${changePct}%). Jika Trend NAIK tajam (>0.5%), pertimbangkan SHORT (Overbought). Jika Trend TURUN tajam (<-0.5%), pertimbangkan LONG (Oversold).` 
                 }) 
             });
-            const data = await res.json(); document.getElementById(id).innerText = data.reply;
-        } catch (err) {}
+            const data = await res.json(); 
+            document.getElementById(id).innerText = data.reply;
+        } catch (err) { document.getElementById(id).innerText = "AI lagi pusing Boss!"; }
         b.scrollTop = b.scrollHeight;
     }
 
