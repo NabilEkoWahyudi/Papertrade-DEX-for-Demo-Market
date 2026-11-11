@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-bg text-textp font-sans antialiased;
+  }
+  input,
+  select,
+  textarea {
+    @apply outline-none;
+  }
+  /* Scrollbar tipis gaya exchange */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #2b3139;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-panel border border-borderp;
+  }
+  .panel-header {
+    @apply px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-sub flex items-center justify-between border-b border-borderp bg-panel;
+  }
+  .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .field {
+    @apply w-full bg-bg border border-borderp rounded-lg px-3 py-2.5 text-sm font-semibold text-white focus:border-accent transition-colors;
+  }
+  .chip-ok {
+    @apply bg-long/10 text-long border border-long/30;
+  }
+  .chip-err {
+    @apply bg-short/10 text-short border border-short/30;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
