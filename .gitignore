@@ -1,4 +1,9 @@
 .env
+.data
 node_modules/
+.nuxt
+.output
 .vercel
+dist
 .DS_Store
+*.log

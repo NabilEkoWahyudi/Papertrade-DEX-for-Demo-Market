@@ -1,13 +1,40 @@
 {
-  "name": "solana-dex-ai",
+  "name": "papertrade-nuxt",
   "version": "1.0.0",
-  "engines": {
-    "node": "18.x"
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "token:create": "tsx scripts/create_token.ts",
+    "token:mint": "tsx scripts/mint_supply.ts",
+    "token:transfer": "tsx scripts/transfer.ts",
+    "token:metadata": "tsx scripts/set_metadata.ts"
   },
   "dependencies": {
-    "axios": "^1.6.0"
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0",
+    "html-to-image": "^1.11.13",
+    "pinia": "^3.0.1"
   },
   "devDependencies": {
-    "@types/node": "^25.2.3"
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.1",
+    "@types/node": "^22.15.0",
+    "@vueuse/core": "^13.1.0",
+    "@vueuse/nuxt": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "nuxt": "^4.0.0",
+    "pinia-plugin-persistedstate": "^4.2.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.6.3",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.1.10"
   }
 }
