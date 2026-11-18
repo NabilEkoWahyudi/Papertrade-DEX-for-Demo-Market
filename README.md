@@ -2,6 +2,8 @@
 
 Rebuild dari [`Papertrade-DEX-for-Demo-Market`](https://github.com/NabilEkoWahyudi/Papertrade-DEX-for-Demo-Market) (HTML/JS vanilla + Vercel Functions) menjadi aplikasi **Nuxt (Vue 3 + TypeScript + Pinia + Tailwind + VueUse)**. Lihat `PROJECT.md` untuk brief lengkapnya.
 
+![PaperTrade DEX — TradingView chart, order book live, dan panel posisi](docs/papertrade-dex.jpg)
+
 ## Fitur
 
 **Paritas dgn versi lama:**
